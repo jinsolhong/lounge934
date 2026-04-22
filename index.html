@@ -521,6 +521,53 @@ textarea.ta:focus { border-color: rgba(255,255,255,.5); }
 /* ── empty ── */
 .gempty { text-align: center; padding: 40px 20px; font-family: var(--go); font-size: 12px; letter-spacing: 0.2em; color: var(--w40); }
 
+/* ── cafe gallery grid ── */
+.place-grid, .cafe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.place-grid .pc, .cafe-grid .pc { padding: 13px 14px 12px; margin-bottom: 0; }
+.place-grid .pc-name, .cafe-grid .pc-name { font-size: 15px; }
+.place-grid .pc-desc, .cafe-grid .pc-desc { font-size: 12px; line-height: 1.6; margin-bottom: 10px;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.place-grid .pc-meta, .cafe-grid .pc-meta { font-size: 9px; margin-bottom: 6px; }
+.place-grid .pc-bottom, .cafe-grid .pc-bottom { padding-top: 8px; }
+.place-grid .map-btn, .cafe-grid .map-btn { font-size: 11px; padding: 5px 10px; }
+/* vote buttons compact in grid */
+.place-grid .vb { padding: 4px 8px; font-size: 11px; }
+.place-grid .vote-row { gap: 4px; flex-wrap: wrap; }
+.place-grid .vote-lbl { font-size: 9px; margin-bottom: 6px; }
+.place-grid .vtally { font-size: 9px; padding: 3px 7px; }
+.place-grid .vote-wrap { padding-top: 8px; }
+
+/* ── accommodation card ── */
+.acc-card {
+  background: var(--surface); border: .5px solid rgba(201,173,122,0.35);
+  border-radius: 4px; padding: 16px 18px; margin-bottom: 8px;
+  position: relative; overflow: hidden;
+}
+.acc-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: var(--gold); opacity: 0.6;
+}
+.acc-badge {
+  display: inline-block; font-family: var(--go); font-size: 9px;
+  letter-spacing: 0.22em; color: var(--gold); text-transform: uppercase;
+  border: .5px solid rgba(201,173,122,0.5); border-radius: 2px;
+  padding: 2px 8px; margin-bottom: 10px;
+}
+.acc-name { font-family: var(--mh); font-size: 22px; letter-spacing: 0.05em; color: #fff; margin-bottom: 4px; }
+.acc-meta { font-family: var(--go); font-size: 11px; color: var(--w60); margin-bottom: 12px; letter-spacing: 0.08em; }
+.acc-price-row { display: flex; align-items: baseline; gap: 16px; border-top: .5px solid var(--border); padding-top: 12px; }
+.acc-total { display: flex; flex-direction: column; gap: 2px; }
+.acc-price-lbl { font-family: var(--go); font-size: 9px; letter-spacing: 0.2em; color: var(--w60); text-transform: uppercase; }
+.acc-price-val { font-family: var(--mh); font-size: 22px; letter-spacing: 0.04em; color: var(--gold); }
+.acc-divider { font-family: var(--go); font-size: 18px; color: var(--w40); }
+.acc-per { display: flex; flex-direction: column; gap: 2px; }
+.acc-per .acc-price-lbl { color: var(--w60); }
+.acc-per .acc-price-val { font-size: 20px; color: rgba(255,255,255,0.85); }
+
+/* ── cat note ── */
+.cat-cafe { gap: 8px; }
+.cat-note { font-family: var(--go); font-size: 9px; letter-spacing: 0.1em; color: var(--w40); white-space: nowrap; }
+
 /* ── footer ── */
 .footer { text-align: center; padding: 48px 0 20px; font-family: var(--go); font-size: 10px; letter-spacing: 0.3em; color: var(--w40); text-transform: uppercase; }
 .footer::before { content:''; display:block; width:30px; height:.5px; background:var(--borderB); margin:0 auto 16px; }
@@ -572,12 +619,12 @@ textarea.ta:focus { border-color: rgba(255,255,255,.5); }
 <!-- ── PLACES ── -->
 <div class="tab on" id="tab-places">
   <div class="sh"><h2>Places</h2><div class="sh-line"></div></div>
+  <div class="cat"><span>Accommodation</span></div>
+  <div id="acccard"></div>
   <div class="cat"><span>Restaurant</span></div>
-  <div id="rlist"></div>
-  <div class="cat"><span>Café</span></div>
-  <div id="clist"></div>
-  <div class="cat"><span>Attraction</span></div>
-  <div id="alist"></div>
+  <div class="place-grid" id="rlist"></div>
+  <div class="cat cat-cafe"><span>Café</span><span class="cat-note">식당 정한 뒤 그때가서 결정</span></div>
+  <div class="cafe-grid" id="clist"></div>
 </div>
 
 <!-- ── SETTLE ── -->
@@ -690,17 +737,16 @@ const MC={근화:'#5DCAA5',민지:'#A09BDD',수진:'#E8906A',진솔:'#D4A84B'};
 const MBG={근화:'rgba(93,202,165,.18)',민지:'rgba(160,155,221,.18)',수진:'rgba(232,144,106,.18)',진솔:'rgba(212,168,75,.18)'};
 
 const RS=[
-  {id:'r1',nm:'홍천한우사랑말식당',rt:'4.3',rc:'1,802',tp:'한우',hr:'10:30–21:00',ds:'정육점에서 홍천한우를 직접 구입 후 즉석 구이. 가성비 좋은 현지 최고 인기 한우 맛집.',map:'https://map.naver.com/p/search/홍천한우사랑말식당'},
-  {id:'r2',nm:'북방막국수',rt:'4.1',rc:'292',tp:'막국수·두부',hr:'10:30–20:00 (화 휴무)',ds:'들깨칼국수와 막국수가 맛있는 현지인 단골 식당. 두부 요리도 강력 추천.',map:'https://map.naver.com/p/search/홍천+북방막국수'},
-  {id:'r3',nm:'원골',rt:'4.4',rc:'473',tp:'한식 정식',hr:'11:00–21:00 (일 휴무)',ds:'한옥 감성의 시골밥상. 모내기 정식·곤드레 정식 대표 메뉴. 고즈넉한 마당과 느티나무.',map:'https://map.naver.com/p/search/홍천+원골식당'},
-  {id:'r4',nm:'내고향손두부',rt:'4.4',rc:'261',tp:'두부 전문',hr:'08:30–20:30',ds:'매일 아침 손수 만드는 수제두부. 두부전골·청국장·비지장 등 건강한 두부 요리 전문.',map:'https://map.naver.com/p/search/홍천+내고향손두부'},
-  {id:'r5',nm:'북방닭갈비막국수',rt:'4.4',rc:'23',tp:'닭갈비·막국수',hr:'11:00–20:00 (일 휴무)',ds:'오이탕탕이가 별미인 동네 맛집. 닭갈비와 들깨막국수, 따뜻한 옹심이까지.',map:'https://map.naver.com/p/search/홍천+북방닭갈비막국수'},
+  {id:'r1',nm:'금수강산 막국수',rt:'4.4',rc:'',tp:'막국수·감자전',hr:'10:30–20:00 (수 휴무)',ds:'팔봉산 계곡 옆 인기 막국수집. 메밀 물·비빔막국수와 감자전이 별미. 시원하고 깔끔한 현지 맛.',map:'https://naver.me/G8s9EJeL'},
+  {id:'r2',nm:'팔봉산용궁불쭈꾸미',rt:'4.3',rc:'',tp:'쭈꾸미볶음',hr:'10:40–21:00 (화 휴무)',ds:'불향 가득 쭈꾸미 전문. 맵기 조절 가능. 들기름·참기름 방앗간 직송. 정갈한 반찬 구성.',map:'https://naver.me/5IS9MWQU'},
+  {id:'r3',nm:'홍천한우사랑말식당',rt:'4.3',rc:'1,802',tp:'홍천한우',hr:'10:30–21:00',ds:'정육점에서 홍천한우 직접 구입 후 즉석 구이. 가성비 압도적인 현지 최고 인기 한우 맛집.',map:'https://naver.me/G9r5jqZW'},
+  {id:'r4',nm:'숙성21',rt:'4.5',rc:'',tp:'숙성한우·삼겹살',hr:'12:00–22:00 (월 휴무)',ds:'1200평 대형 고깃집. 솔트에이징 숙성 한우와 삼겹살. 계곡 야장 테이블·프라이빗 방갈로.',map:'https://naver.me/Gdym1H2t'},
 ];
 const CS=[
-  {id:'c1',nm:'테살로바',rt:'4.5',rc:'30',tp:'뷰 카페',hr:'10:00–22:00',ds:'홍천강 옆 그리스 감성 카페. 흰 벽·파란 문 포인트. 반려동물 OK, 루프탑 있음.',map:'https://map.naver.com/p/search/홍천+테살로바'},
-  {id:'c2',nm:'진심커피숍',rt:'4.5',rc:'88',tp:'분위기 카페',hr:'10:00–23:00 (월 휴무)',ds:'달빛 감성의 높은 천장 인테리어. 머그워트 라떼·마카롱·치즈케이크 인기.',map:'https://map.naver.com/p/search/홍천+진심커피숍'},
-  {id:'c3',nm:'러스틱라이프',rt:'4.4',rc:'81',tp:'숲속 카페',hr:'11:00–18:30 (월 휴무)',ds:'산속 한옥·숲 감성 카페. 핸드드립 커피와 소박한 디저트. 루프탑 일광욕 가능.',map:'https://map.naver.com/p/search/홍천+러스틱라이프'},
-  {id:'c4',nm:'길151 한옥카페',rt:'5.0',rc:'232',tp:'한옥 카페',hr:'10:00–18:30',ds:'바리스타 챔피언 운영. 에어로프레스 커피와 직접 구운 베이커리 절찬.',map:'https://map.naver.com/p/search/홍천+길151카페'},
+  {id:'c1',nm:'러스틱라이프',rt:'4.4',rc:'81',tp:'숲속 프라이빗',hr:'11:00–19:30 (수 휴무)',ds:'100% 예약제 숲속 카페. 한옥온실·유리온실·숲책방. 홍천 재배 꽃차·오미자.',map:'https://naver.me/G8s94joG',noVote:true},
+  {id:'c2',nm:'써라운드 슬로우',rt:'4.5',rc:'',tp:'산전망 뷰 카페',hr:'',ds:'산 위 탁 트인 전망. 큰 창 자연 채광 가득. 고요하고 여유로운 힐링 공간.',map:'https://naver.me/xq3a7aQK',noVote:true},
+  {id:'c3',nm:'카페 드로잉 포레',rt:'4.4',rc:'',tp:'숲 테마 카페',hr:'',ds:'숲 속 감성 인테리어. 자연과 어우러진 드로잉 포레스트 감성. 인스타 명소.',map:'https://naver.me/x3j7eOnI',noVote:true},
+  {id:'c4',nm:'위켄드74',rt:'4.3',rc:'',tp:'대형 야외정원',hr:'',ds:'넓고 여유로운 야외 정원. 드라이브 겸 방문하기 좋은 대형 카페. 주차 편리.',map:'https://naver.me/GaldvdkT',noVote:true},
 ];
 const AS=[
   {id:'a1',nm:'공작산생태숲',rt:'4.7',rc:'188',tp:'자연 산책',hr:'09:00–18:00',ds:'아름다운 계곡과 산책로. 수타사와 함께 방문 추천.',map:'https://map.naver.com/p/search/홍천+공작산생태숲'},
@@ -709,32 +755,60 @@ const AS=[
 ];
 
 const VS={};
-[...RS,...CS,...AS].forEach(p=>{VS[p.id]={};});
+[...RS,...AS].forEach(p=>{VS[p.id]={};MB.forEach(m=>{VS[p.id][m]=false;});});
 
 function mkCard(p,container){
-  const btns=MB.map((m,i)=>`<button id="vb-${p.id}-${i}" class="vb${VS[p.id][m]?' on':''}" onclick="vote('${p.id}','${m}',this)">${m}</button>`).join('');
   const mapBtn=p.map?`<a class="map-btn" href="${p.map}" target="_blank" rel="noopener">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
     네이버 지도
   </a>`:'';
+  const starsHtml=p.rt?`<div class="pc-stars">★ ${p.rt}</div>`:'';
+  const voteHtml=p.noVote?'':`
+    <div class="vote-wrap">
+      <div class="vote-lbl">Vote to visit</div>
+      <div class="vote-row">${MB.map((m,i)=>`<button id="vb-${p.id}-${i}" class="vb${(VS[p.id]&&VS[p.id][m])?' on':''}" onclick="vote('${p.id}','${m}',this)">${m}</button>`).join('')}<div class="vtally" id="vt-${p.id}">0 votes</div></div>
+    </div>`;
+  const hrHtml=p.hr?`<div class="pc-meta">${p.tp} · ${p.hr}</div>`:`<div class="pc-meta">${p.tp}</div>`;
   const d=document.createElement('div'); d.className='pc'; d.id='pc-'+p.id;
   d.innerHTML=`
     <div class="pc-top">
       <div class="pc-name">${p.nm}</div>
-      <div class="pc-stars">★ ${p.rt}</div>
+      ${starsHtml}
     </div>
-    <div class="pc-meta">${p.tp} · ${p.hr}</div>
+    ${hrHtml}
     <div class="pc-desc">${p.ds}</div>
     <div class="pc-bottom">
       ${mapBtn}
-      <div class="vote-wrap">
-        <div class="vote-lbl">Vote to visit</div>
-        <div class="vote-row">${btns}<div class="vtally" id="vt-${p.id}">0 votes</div></div>
-      </div>
+      ${voteHtml}
     </div>`;
   document.getElementById(container).appendChild(d);
 }
 
+function mkAccCard(){
+  const d=document.createElement('div'); d.className='acc-card';
+  d.innerHTML=`
+    <div class="acc-badge">Confirmed · Stay</div>
+    <div class="acc-name">노블레스 노마드</div>
+    <div class="acc-meta">강원 홍천 · May 04–05 · 4인</div>
+    <div class="acc-price-row">
+      <div class="acc-total">
+        <div class="acc-price-lbl">Total</div>
+        <div class="acc-price-val">240,000원</div>
+      </div>
+      <div class="acc-divider">÷4</div>
+      <div class="acc-per">
+        <div class="acc-price-lbl">Per person</div>
+        <div class="acc-price-val">60,000원</div>
+      </div>
+      <a class="map-btn" href="https://naver.me/FV7V7EUN" target="_blank" rel="noopener" style="margin-left:auto;margin-bottom:0;align-self:flex-end">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        네이버 지도
+      </a>
+    </div>`;
+  document.getElementById('acccard').appendChild(d);
+}
+
+mkAccCard();
 RS.forEach(p=>mkCard(p,'rlist'));
 CS.forEach(p=>mkCard(p,'clist'));
 AS.forEach(p=>mkCard(p,'alist'));
@@ -746,7 +820,8 @@ function updateTally(id){
 }
 
 function refreshVoteUI(){
-  [...RS,...CS,...AS].forEach(p=>{
+  [...RS,...AS].forEach(p=>{
+    if(!VS[p.id]) return;
     MB.forEach((m,i)=>{
       const btn=document.getElementById('vb-'+p.id+'-'+i);
       if(btn) btn.classList.toggle('on',!!VS[p.id][m]);
@@ -814,7 +889,7 @@ async function loadData(){
     if(sm) moments=sm.map(r=>{return{a:r.author,txt:r.text,photos:r.photos||[],date:r.date||'',_id:r.id}});
     const sv=await sbFetch('/rest/v1/votes?select=*');
     if(sv){
-      [...RS,...CS,...AS].forEach(p=>{MB.forEach(m=>{VS[p.id][m]=false;});});
+      [...RS,...AS].forEach(p=>{if(VS[p.id]) MB.forEach(m=>{VS[p.id][m]=false;});});
       sv.forEach(row=>{if(VS[row.place_id]) VS[row.place_id][row.member]=true;});
     }
   }catch(e){console.error('loadData error:',e);}
@@ -963,13 +1038,39 @@ async function delMoment(i){
 
 loadData().then(()=>{render();renderGallery();refreshVoteUI();});
 
-// realtime polling every 10s to sync between devices
+// ── Supabase Realtime: votes 실시간 구독 ──
+function subscribeVotes(){
+  try{
+    const ws=new WebSocket(
+      SB_URL.replace('https','wss')+'/realtime/v1/websocket?apikey='+SB_KEY+'&vsn=1.0.0'
+    );
+    ws.onopen=()=>{
+      ws.send(JSON.stringify({topic:'realtime:public:votes',event:'phx_join',payload:{},ref:'1'}));
+    };
+    ws.onmessage=async(e)=>{
+      const msg=JSON.parse(e.data);
+      if(msg.event==='INSERT'||msg.event==='DELETE'||msg.event==='UPDATE'){
+        const sv=await sbFetch('/rest/v1/votes?select=*');
+        if(sv){
+          [...RS,...AS].forEach(p=>{if(VS[p.id]) MB.forEach(m=>{VS[p.id][m]=false;});});
+          sv.forEach(row=>{if(VS[row.place_id]) VS[row.place_id][row.member]=true;});
+          refreshVoteUI();
+        }
+      }
+    };
+    ws.onclose=()=>{ setTimeout(subscribeVotes, 3000); };
+    ws.onerror=()=>{ ws.close(); };
+  }catch(e){ console.warn('realtime WS error:',e); }
+}
+subscribeVotes();
+
+// polling every 8s as fallback
 setInterval(async()=>{
   await loadData();
   render();
   renderGallery();
   refreshVoteUI();
-},10000);
+},8000);
 </script>
 </body>
 </html>
