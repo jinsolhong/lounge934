@@ -101,7 +101,7 @@ body::after {
 .hero-title {
   font-family: var(--mh);
   font-size: clamp(68px, 22vw, 130px);
-  font-weight: 400; line-height: .88;
+  font-weight: 400; line-height: 1;
   letter-spacing: 0.06em;
   background: linear-gradient(160deg, #fff 0%, rgba(255,255,255,.85) 40%, rgba(200,215,215,.65) 80%, #fff 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -539,7 +539,7 @@ textarea.ta:focus { border-color: rgba(255,255,255,.5); }
   <div class="hero-watermark" aria-hidden="true">L934</div>
   <div class="hero-vline"></div>
   <div class="hero-eyebrow">Gangwon · Hongcheon · 2025</div>
-  <div class="hero-title">LOUNGE<br>934</div>
+  <div class="hero-title">Lounge934</div>
   <div class="hero-sub">TRAVEL</div>
   <div class="hero-gems">
     <span></span><div class="gem s"></div><div class="gem"></div><div class="gem s"></div><span></span>
@@ -712,7 +712,7 @@ const VS={};
 [...RS,...CS,...AS].forEach(p=>{VS[p.id]={};});
 
 function mkCard(p,container){
-  const btns=MB.map(m=>`<button class="vb${VS[p.id][m]?' on':''}" onclick="vote('${p.id}','${m}',this)">${m}</button>`).join('');
+  const btns=MB.map((m,i)=>`<button id="vb-${p.id}-${i}" class="vb${VS[p.id][m]?' on':''}" onclick="vote('${p.id}','${m}',this)">${m}</button>`).join('');
   const mapBtn=p.map?`<a class="map-btn" href="${p.map}" target="_blank" rel="noopener">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
     네이버 지도
@@ -739,10 +739,34 @@ RS.forEach(p=>mkCard(p,'rlist'));
 CS.forEach(p=>mkCard(p,'clist'));
 AS.forEach(p=>mkCard(p,'alist'));
 
-function vote(id,m,btn){
-  VS[id][m]=!VS[id][m]; btn.classList.toggle('on',VS[id][m]);
+function updateTally(id){
   const t=Object.values(VS[id]).filter(Boolean).length;
-  document.getElementById('vt-'+id).textContent=t+' vote'+(t!==1?'s':'');
+  const el=document.getElementById('vt-'+id);
+  if(el) el.textContent=t+' vote'+(t!==1?'s':'');
+}
+
+function refreshVoteUI(){
+  [...RS,...CS,...AS].forEach(p=>{
+    MB.forEach((m,i)=>{
+      const btn=document.getElementById('vb-'+p.id+'-'+i);
+      if(btn) btn.classList.toggle('on',!!VS[p.id][m]);
+    });
+    updateTally(p.id);
+  });
+}
+
+async function vote(id,m,btn){
+  const newState=!VS[id][m];
+  VS[id][m]=newState;
+  btn.classList.toggle('on',newState);
+  updateTally(id);
+  try{
+    if(newState){
+      await sbFetch('/rest/v1/votes','POST',{place_id:id,member:m});
+    } else {
+      await sbFetch('/rest/v1/votes?place_id=eq.'+id+'&member=eq.'+encodeURIComponent(m),'DELETE');
+    }
+  }catch(e){console.error('vote save error:',e);}
 }
 
 function show(name,btn){
@@ -788,6 +812,11 @@ async function loadData(){
     if(si&&si.length) items=[...si.map(r=>{return{nm:r.nm,amt:r.amt,payer:r.payer,cnt:r.cnt,date:r.date,_id:r.id}})];
     const sm=await sbFetch('/rest/v1/moments?order=created_at.desc&select=*');
     if(sm) moments=sm.map(r=>{return{a:r.author,txt:r.text,photos:r.photos||[],date:r.date||'',_id:r.id}});
+    const sv=await sbFetch('/rest/v1/votes?select=*');
+    if(sv){
+      [...RS,...CS,...AS].forEach(p=>{MB.forEach(m=>{VS[p.id][m]=false;});});
+      sv.forEach(row=>{if(VS[row.place_id]) VS[row.place_id][row.member]=true;});
+    }
   }catch(e){console.error('loadData error:',e);}
 }
 
@@ -932,15 +961,14 @@ async function delMoment(i){
   renderGallery();
 }
 
-loadData().then(()=>{render();renderGallery();});
+loadData().then(()=>{render();renderGallery();refreshVoteUI();});
 
 // realtime polling every 10s to sync between devices
 setInterval(async()=>{
-  const prevM=moments.length;
-  const prevI=items.length;
   await loadData();
   render();
   renderGallery();
+  refreshVoteUI();
 },10000);
 </script>
 </body>
