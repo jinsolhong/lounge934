@@ -755,7 +755,9 @@ const AS=[
 ];
 
 const VS={};
-[...RS,...AS].forEach(p=>{VS[p.id]={};MB.forEach(m=>{VS[p.id][m]=false;});});
+RS.forEach(p=>{VS[p.id]={};MB.forEach(m=>{VS[p.id][m]=false;});});
+const VOTE_AUTHOR='__lounge934_votes__';
+let voteDocId=null; // moments 테이블의 투표 저장 row id
 
 function mkCard(p,container){
   const mapBtn=p.map?`<a class="map-btn" href="${p.map}" target="_blank" rel="noopener">
@@ -811,7 +813,6 @@ function mkAccCard(){
 mkAccCard();
 RS.forEach(p=>mkCard(p,'rlist'));
 CS.forEach(p=>mkCard(p,'clist'));
-AS.forEach(p=>mkCard(p,'alist'));
 
 function updateTally(id){
   const t=Object.values(VS[id]).filter(Boolean).length;
@@ -820,7 +821,7 @@ function updateTally(id){
 }
 
 function refreshVoteUI(){
-  [...RS,...AS].forEach(p=>{
+  RS.forEach(p=>{
     if(!VS[p.id]) return;
     MB.forEach((m,i)=>{
       const btn=document.getElementById('vb-'+p.id+'-'+i);
@@ -830,18 +831,38 @@ function refreshVoteUI(){
   });
 }
 
-async function vote(id,m,btn){
-  const newState=!VS[id][m];
-  VS[id][m]=newState;
-  btn.classList.toggle('on',newState);
-  updateTally(id);
+async function saveAllVotes(){
+  // 전체 VS 상태를 moments 테이블에 저장
+  const data={author:VOTE_AUTHOR,text:JSON.stringify(VS),photos:[],date:'system'};
   try{
-    if(newState){
-      await sbFetch('/rest/v1/votes','POST',{place_id:id,member:m});
+    if(voteDocId){
+      // 기존 row 업데이트
+      const r=await fetch(SB_URL+'/rest/v1/moments?id=eq.'+voteDocId,{
+        method:'PATCH',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,
+          'Content-Type':'application/json','Prefer':'return=minimal'}
+      ,body:JSON.stringify({text:JSON.stringify(VS)})});
+      if(!r.ok){const e=await r.text();console.error('saveVotes PATCH error:',e);}
     } else {
-      await sbFetch('/rest/v1/votes?place_id=eq.'+id+'&member=eq.'+encodeURIComponent(m),'DELETE');
+      // 새 row 생성
+      const r=await fetch(SB_URL+'/rest/v1/moments',{
+        method:'POST',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,
+          'Content-Type':'application/json','Prefer':'return=representation'}
+      ,body:JSON.stringify(data)});
+      if(r.ok){const rows=await r.json();if(rows&&rows[0]) voteDocId=rows[0].id;}
+      else{const e=await r.text();console.error('saveVotes POST error:',e);}
     }
-  }catch(e){console.error('vote save error:',e);}
+  }catch(e){console.error('saveAllVotes error:',e);}
+}
+
+async function vote(id,m,btn){
+  VS[id][m]=!VS[id][m];
+  btn.classList.toggle('on',VS[id][m]);
+  updateTally(id);
+  btn.disabled=true;
+  await saveAllVotes();
+  btn.disabled=false;
 }
 
 function show(name,btn){
@@ -869,13 +890,61 @@ function previewCalc(){
 const SB_URL='https://ztxzfwzemztmzclkysct.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0eHpmd3plbXp0bXpjbGt5c2N0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTgzOTQsImV4cCI6MjA5MjA3NDM5NH0.idbkMdaiyeFiRc73dFHQmS0U2MfIiePXBAk5kEoAZCE';
 
-async function sbFetch(path, method='GET', body=null){
-  const opts={method,headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'}};
+async function sbFetch(path, method='GET', body=null, extraHeaders={}){
+  const opts={method,headers:{
+    'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,
+    'Content-Type':'application/json','Prefer':'return=representation',
+    ...extraHeaders
+  }};
   if(body) opts.body=JSON.stringify(body);
   const r=await fetch(SB_URL+path,opts);
-  if(!r.ok){const e=await r.text();console.error('SB error:',e);return null;}
+  if(!r.ok){const e=await r.text();console.error('SB error ['+method+' '+path+']:',e);return null;}
   const txt=await r.text();
-  return txt?JSON.parse(txt):null;
+  return txt?JSON.parse(txt):[];
+}
+
+// vote 전용: upsert (중복 에러 방지) + minimal return
+async function voteInsert(place_id, member){
+  const r=await fetch(SB_URL+'/rest/v1/votes',{
+    method:'POST',
+    headers:{
+      'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,
+      'Content-Type':'application/json',
+      'Prefer':'resolution=merge-duplicates,return=minimal'
+    },
+    body:JSON.stringify({place_id,member})
+  });
+  if(!r.ok){const e=await r.text();console.error('voteInsert error:',e);}
+  return r.ok;
+}
+
+async function voteDelete(place_id, member){
+  const r=await fetch(SB_URL+'/rest/v1/votes?place_id=eq.'+encodeURIComponent(place_id)+'&member=eq.'+encodeURIComponent(member),{
+    method:'DELETE',
+    headers:{
+      'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,
+      'Content-Type':'application/json',
+      'Prefer':'return=minimal'
+    }
+  });
+  if(!r.ok){const e=await r.text();console.error('voteDelete error:',e);}
+  return r.ok;
+}
+
+async function fetchVotes(){
+  try{
+    const r=await fetch(SB_URL+'/rest/v1/votes?select=*',{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    if(!r.ok){console.error('fetchVotes error:',await r.text());return null;}
+    return await r.json();
+  }catch(e){console.error('fetchVotes network error:',e);return null;}
+}
+
+function applyVotes(sv){
+  if(!sv) return;
+  [...RS,...AS].forEach(p=>{if(VS[p.id]) MB.forEach(m=>{VS[p.id][m]=false;});});
+  sv.forEach(row=>{if(VS[row.place_id]) VS[row.place_id][row.member]=true;});
 }
 
 let items=[{nm:'숙소비',amt:240000,payer:'민지',cnt:4,date:'5/4'}];
@@ -887,10 +956,17 @@ async function loadData(){
     if(si&&si.length) items=[...si.map(r=>{return{nm:r.nm,amt:r.amt,payer:r.payer,cnt:r.cnt,date:r.date,_id:r.id}})];
     const sm=await sbFetch('/rest/v1/moments?order=created_at.desc&select=*');
     if(sm) moments=sm.map(r=>{return{a:r.author,txt:r.text,photos:r.photos||[],date:r.date||'',_id:r.id}});
-    const sv=await sbFetch('/rest/v1/votes?select=*');
-    if(sv){
-      [...RS,...AS].forEach(p=>{if(VS[p.id]) MB.forEach(m=>{VS[p.id][m]=false;});});
-      sv.forEach(row=>{if(VS[row.place_id]) VS[row.place_id][row.member]=true;});
+    // 투표 데이터 로드 (moments 테이블의 __lounge934_votes__ 항목)
+    const voteRow=moments.find(m=>m.a===VOTE_AUTHOR);
+    if(voteRow){
+      voteDocId=voteRow._id||null;
+      try{
+        const saved=JSON.parse(voteRow.txt||'{}');
+        RS.forEach(p=>{
+          if(!saved[p.id]) return;
+          MB.forEach(m=>{VS[p.id][m]=!!saved[p.id][m];});
+        });
+      }catch(e){console.error('votes parse error:',e);}
     }
   }catch(e){console.error('loadData error:',e);}
 }
@@ -1011,7 +1087,7 @@ function renderGallery(){
   g.innerHTML='';
   if(!moments.length){empty.style.display='block';return;}
   empty.style.display='none';
-  moments.forEach((m,i)=>{
+  moments.filter(m=>m.a!==VOTE_AUTHOR).forEach((m,i)=>{
     const n=m.photos.length;
     const cls=n===0?'':`p${n<=4?n:'x'}`;
     const ph=n?`<div class="gi-photos ${cls}">${m.photos.map(p=>`<img src="${p}" loading="lazy">`).join('')}</div>`:'';
@@ -1045,17 +1121,14 @@ function subscribeVotes(){
       SB_URL.replace('https','wss')+'/realtime/v1/websocket?apikey='+SB_KEY+'&vsn=1.0.0'
     );
     ws.onopen=()=>{
-      ws.send(JSON.stringify({topic:'realtime:public:votes',event:'phx_join',payload:{},ref:'1'}));
+      ws.send(JSON.stringify({topic:'realtime:public:moments',event:'phx_join',payload:{},ref:'1'}));
     };
     ws.onmessage=async(e)=>{
       const msg=JSON.parse(e.data);
-      if(msg.event==='INSERT'||msg.event==='DELETE'||msg.event==='UPDATE'){
-        const sv=await sbFetch('/rest/v1/votes?select=*');
-        if(sv){
-          [...RS,...AS].forEach(p=>{if(VS[p.id]) MB.forEach(m=>{VS[p.id][m]=false;});});
-          sv.forEach(row=>{if(VS[row.place_id]) VS[row.place_id][row.member]=true;});
-          refreshVoteUI();
-        }
+      if(msg.topic&&msg.topic.includes('moments')&&
+        (msg.event==='INSERT'||msg.event==='DELETE'||msg.event==='UPDATE')){
+        await loadData();
+        refreshVoteUI();
       }
     };
     ws.onclose=()=>{ setTimeout(subscribeVotes, 3000); };
